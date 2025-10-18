@@ -9,21 +9,25 @@ import { AxiosError } from 'axios';
 
 @Injectable()
 export class AggregatorService {
+
   constructor(private readonly httpService: HttpService) { }
   private readonly logger = new Logger(AggregatorService.name)
 
   async fetchData(dateStr: any, endDestination: any) {
+    this.logger.log(`Fetching weather for ${endDestination} on ${dateStr}`)
     return await this.callService('localhost', 5010, `/weather/seven-days/${dateStr}/${endDestination}`)
   }
 
   private async callService(hostname: string, port: number, path: string): Promise<any> {
     const url = `http://${hostname}:${port}${path}`;
+    this.logger.debug(`Calling service --> ${url}`)
 
     try {
-      const { data } = await firstValueFrom(this.httpService.get<any>(url))
+      const { data } = await firstValueFrom(this.httpService.get<any>(url));
+      this.logger.debug(`Response recieved from ${url}`);
       return data
     } catch (error) {
-      console.log(`Service timeout: ${url}`);
+      this.logger.error(`Error calling ${url}`, error.stack);
       throw error;
     }
   }
@@ -34,8 +38,12 @@ export class AggregatorService {
 
   async getFlightAndHotelInfo(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
+      this.logger.warn(`Missing fields -> start=${startDestination},end=${endDestination},departTime=${departTime}`)
       throw new HttpException('flight details are required', 400);
     }
+
+    this.logger.log(`Fetching flight + hotel info for ${startDestination} to ${endDestination} at ${departTime}`)
+
     const flightPromise = this.callService(
       'localhost',
       3000,
@@ -59,12 +67,15 @@ export class AggregatorService {
       if (Array.isArray(results)) {
         [flights, hotels] = results;
       }
+      this.logger.log(`Flight + hotel data recieved`)
     } catch (error) {
       degraded = true;
+      this.logger.warn(`Timout/degraded mode --> fallback started`)
+
       flights = await Promise.resolve(flightPromise).catch(() => null);
       hotels = await Promise.resolve(hotelPromise).catch(() => null);
     }
-    
+
 
     return {
       flights: flights || [],
@@ -80,13 +91,17 @@ export class AggregatorService {
 
   async getInfoWithWeather(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
+      this.logger.warn(`Missing fields --> start=${startDestination}, end =${endDestination}, deparTime= ${departTime}`)
       throw new HttpException('flight details are required', 400);
     }
-    const parseDate=new Date(departTime);
+    const parseDate = new Date(departTime);
 
-    if(isNaN(parseDate.getTime())){
+    if (isNaN(parseDate.getTime())) {
+      this.logger.warn(`Invalid date format: ${departTime}`)
       throw new BadRequestException('Invalide date format for deparTTime')
     }
+
+    this.logger.log(`Fetching fight, weather, hotel for ${startDestination} --> ${departTime}`)
 
     const flightPromise = this.callService(
       'localhost',
@@ -100,9 +115,9 @@ export class AggregatorService {
       `/hotel?location=${endDestination}`
 
     );
-    
+
     const dateStr = parseDate.toISOString().split('T')[0];
-    
+
 
     //circuit breaker
     const weatherBreaker = new CircuitBreaker(async () => await this.fetchData(dateStr, endDestination),
@@ -112,6 +127,7 @@ export class AggregatorService {
         cooldownTime: 30000,
         halfOpenRequests: 5,
         fallback: () => {
+          this.logger.warn(`weather service fallback executed `);
           return {
             summary: 'service unavailable',
             degraded: true
@@ -138,8 +154,12 @@ export class AggregatorService {
       if (Array.isArray(results)) {
         [flights, hotels, weather] = results;
       }
+      this.logger.log(`flight + hotel +weather fetched`)
     } catch (error) {
       degraded = true;
+      this.logger.warn(`Timeout/degarded mode --> executing fallbacks`)
+
+
       flights = await Promise.resolve(flightPromise).catch(() => null);
       hotels = await Promise.resolve(hotelPromise).catch(() => null);
 
@@ -149,8 +169,8 @@ export class AggregatorService {
 
 
     }
-       //when weather is down it calls the fallback. so no error throws,not catch by above catch block
-    if (weather && typeof weather ==='object' && 'degraded' in weather && (weather as any).degraded === true) {
+    //when weather is down it calls the fallback. so no error throws,not catch by above catch block
+    if (weather && typeof weather === 'object' && 'degraded' in weather && (weather as any).degraded === true) {
       degraded = true;
     }
 
@@ -174,8 +194,12 @@ export class AggregatorService {
 
   async getBudgetRoute(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
+      this.logger.warn(`Missing required fields for budget route`);
       throw new HttpException('start Destination, end Destination and depart Time are required', 400);
     }
+
+    this.logger.log(`Fetching budget route for ${startDestination} → ${endDestination}`);
+
     const flightResult: any = await this.callService(
       'localhost',
       3000,
@@ -192,14 +216,14 @@ export class AggregatorService {
 
         //the response comes in string.To get the total time,convert the response to 'date' type
         const flightArrival = new Date(flightResult.arriveTime);
-        
+
         //arriveTime is in Date data type so use getUTCHours and getUTCMinutes(21:00:00)
         const flightMinutes = flightArrival.getUTCHours() * 60 + flightArrival.getUTCMinutes();
 
         //as the checkInEndTime is a string but not in full format dateTtime(21:04).only time.So new Date not work
         const [h, m] = hotel.checkInEndTime.split(':').map(Number);
         const hotelMinutes = h * 60 + m;
-        console.log("hotel minutes : ",hotelMinutes)
+        console.log("hotel minutes : ", hotelMinutes)
         return {
           ...hotel,
           lateCheckIn: flightMinutes <= hotelMinutes
@@ -221,8 +245,11 @@ export class AggregatorService {
 
   async getEventInDestination(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
+      this.logger.warn(`Missing required fields for events fetch`);
       throw new HttpException('flight details are startDestinatin, endDestination and depart time are required', 400);
     }
+
+    this.logger.log(`Fetching events + flight + hotel for ${startDestination} → ${endDestination}`);
     const flightResult: any = await this.callService(
       'localhost',
       3000,
@@ -246,6 +273,8 @@ export class AggregatorService {
       )
 
 
+    }else{
+      this.logger.log(`Non-coastal destination → skipping event fetch`);
     }
 
     return {
