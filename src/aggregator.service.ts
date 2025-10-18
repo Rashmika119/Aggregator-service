@@ -28,7 +28,11 @@ export class AggregatorService {
       return data
     } catch (error) {
       this.logger.error(`Error calling ${url}`, error.stack);
-      throw error;
+      if (error instanceof AxiosError) {
+        throw new HttpException(`External service failed: ${error.message}`, 502);
+      } else {
+        throw new HttpException('Internal server error', 500);
+      }
     }
   }
 
@@ -39,7 +43,7 @@ export class AggregatorService {
   async getFlightAndHotelInfo(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
       this.logger.warn(`Missing fields -> start=${startDestination},end=${endDestination},departTime=${departTime}`)
-      throw new HttpException('flight details are required', 400);
+      throw new BadRequestException('fStart, end destination and departTime are required');
     }
 
     this.logger.log(`Fetching flight + hotel info for ${startDestination} to ${endDestination} at ${departTime}`)
@@ -92,7 +96,7 @@ export class AggregatorService {
   async getInfoWithWeather(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
       this.logger.warn(`Missing fields --> start=${startDestination}, end =${endDestination}, deparTime= ${departTime}`)
-      throw new HttpException('flight details are required', 400);
+      throw new BadRequestException('flight details are required');
     }
     const parseDate = new Date(departTime);
 
@@ -195,7 +199,7 @@ export class AggregatorService {
   async getBudgetRoute(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
       this.logger.warn(`Missing required fields for budget route`);
-      throw new HttpException('start Destination, end Destination and depart Time are required', 400);
+      throw new BadRequestException('Start, end destination and departTime are required');
     }
 
     this.logger.log(`Fetching budget route for ${startDestination} → ${endDestination}`);
@@ -246,7 +250,7 @@ export class AggregatorService {
   async getEventInDestination(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
       this.logger.warn(`Missing required fields for events fetch`);
-      throw new HttpException('flight details are startDestinatin, endDestination and depart time are required', 400);
+      throw new BadRequestException('Start, end destination and departTime are required');
     }
 
     this.logger.log(`Fetching events + flight + hotel for ${startDestination} → ${endDestination}`);
