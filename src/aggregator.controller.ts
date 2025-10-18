@@ -21,7 +21,6 @@ export class AggregatorController {
     @Query('departTime') departTime: string,
   ) {
 
-    
     return this.aggregatorService.getFlightAndHotelInfo(startDestination, endDestination, departTime);
   }
 
@@ -33,14 +32,10 @@ export class AggregatorController {
   async getHotelInfoWithWeather(
     @Query('startDestination') startDestination: string,
     @Query('endDestination') endDestination: string,
-    @Query('arriveTime') arriveTime: string,
     @Query('departTime') departTime: string,
   ) {
-  
-   
-    //convert date string to date as @query decorator gives strings
 
-    return this.aggregatorService.getInfoWithWeather(startDestination, endDestination, arriveTime,departTime);
+    return this.aggregatorService.getInfoWithWeather(startDestination, endDestination, departTime);
   }
 
 
@@ -53,12 +48,10 @@ export class AggregatorController {
  async getChepestRouteWithHotels(
         @Query('startDestination') startDestination:string,
         @Query('endDestination') endDestination:string,
-        @Query('arriveTime') arriveTime:string,
+        @Query('departTime') departTime:string,
   ){
        
-
-        const arriveDate=new Date(arriveTime);
-        return this.aggregatorService.getBudgetRoute(startDestination,endDestination,arriveDate);
+        return this.aggregatorService.getBudgetRoute(startDestination,endDestination,departTime);
       }
 
   //---------------------------version 1--------------------------
@@ -71,13 +64,12 @@ export class AggregatorController {
     @Query('startDestination') starttDestination:string,
     @Query('endDestination') endDestination:string,
     //when send data through a url everything treated as astring.no matter the intended type
-    @Query('arriveTime') arriveTime:string
+    @Query('departTime') departTime:string
 
   ){
     
     //getEventDest method expect Date object
-    const arriveDate=new Date(arriveTime);
-    return this.aggregatorService.getEventInDestination(starttDestination,endDestination,arriveDate);
+    return this.aggregatorService.getEventInDestination(starttDestination,endDestination,departTime);
     ;
   }
 }

@@ -1,11 +1,10 @@
-import { Injectable, HttpException, Logger } from '@nestjs/common';
+import { Injectable, HttpException, Logger, BadRequestException } from '@nestjs/common';
 
 import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom } from 'rxjs';
 
-
-import { AxiosError } from 'axios';
 import { CircuitBreaker } from './circuitBreaker';
+import { AxiosError } from 'axios';
 
 
 @Injectable()
@@ -33,14 +32,14 @@ export class AggregatorService {
   //Include weather and hotel services
   //use scatter gather pattern
 
-  async getFlightAndHotelInfo(startDestination: string, endDestination: string, departTime:string) {
+  async getFlightAndHotelInfo(startDestination: string, endDestination: string, departTime: string) {
     if (!startDestination || !endDestination || !departTime) {
       throw new HttpException('flight details are required', 400);
     }
     const flightPromise = this.callService(
       'localhost',
       3000,
-      `/flight/getAllFlights?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`);
+      `/flight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`);
 
     const hotelPromise = this.callService(
       'localhost',
@@ -65,11 +64,11 @@ export class AggregatorService {
       flights = await Promise.resolve(flightPromise).catch(() => null);
       hotels = await Promise.resolve(hotelPromise).catch(() => null);
     }
-    ;
+    
 
     return {
-      flights: flights || 'no flights found',
-      hotels: hotels || 'no hotels found',
+      flights: flights || [],
+      hotels: hotels || [],
       degraded
     }
 
@@ -79,14 +78,20 @@ export class AggregatorService {
   //using scatter gather
   // circuit breaker for weather service
 
-  async getInfoWithWeather(startDestination: string, endDestination: string, departTime:string, arriveTime: string) {
-    if (!startDestination || !endDestination || !arriveTime || !departTime) {
+  async getInfoWithWeather(startDestination: string, endDestination: string, departTime: string) {
+    if (!startDestination || !endDestination || !departTime) {
       throw new HttpException('flight details are required', 400);
     }
+    const parseDate=new Date(departTime);
+
+    if(isNaN(parseDate.getTime())){
+      throw new BadRequestException('Invalide date format for deparTTime')
+    }
+
     const flightPromise = this.callService(
       'localhost',
       3000,
-      `/flight/getAllFlights?startDestination=${startDestination}&endDestination=${endDestination}&arriveTime=${arriveTime}&deparTime${departTime}`
+      `/flight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`
     );
 
     const hotelPromise = this.callService(
@@ -95,7 +100,9 @@ export class AggregatorService {
       `/hotel?location=${endDestination}`
 
     );
-    const dateStr = arriveTime.split('T')[0];
+    
+    const dateStr = parseDate.toISOString().split('T')[0];
+    
 
     //circuit breaker
     const weatherBreaker = new CircuitBreaker(async () => await this.fetchData(dateStr, endDestination),
@@ -117,7 +124,7 @@ export class AggregatorService {
     let flights = null;
     let hotels = null;
     let weather = null;
-    let degraded :boolean= false;
+    let degraded = false;
 
     try {
       const weatherPromise = weatherBreaker.fire();
@@ -142,7 +149,7 @@ export class AggregatorService {
 
 
     }
-    //when weather is down it calls the fallback. so no error throws,not catch by above catch block
+       //when weather is down it calls the fallback. so no error throws,not catch by above catch block
     if (weather && typeof weather ==='object' && 'degraded' in weather && (weather as any).degraded === true) {
       degraded = true;
     }
@@ -165,14 +172,14 @@ export class AggregatorService {
   //get the late chekin hotels that matches with arrive time
   //chain aggregator pattern used
 
-  async getBudgetRoute(startDestination: string, endDestination: string, arriveTime: Date) {
-    if (!startDestination || !endDestination || !arriveTime) {
-      throw new HttpException('flight details are required', 400);
+  async getBudgetRoute(startDestination: string, endDestination: string, departTime: string) {
+    if (!startDestination || !endDestination || !departTime) {
+      throw new HttpException('start Destination, end Destination and depart Time are required', 400);
     }
     const flightResult: any = await this.callService(
       'localhost',
       3000,
-      `/flight/getCheapFlight?startDestination=${startDestination}&endDestination=${endDestination}&arriveTime=${arriveTime.toISOString()}`
+      `/flight/getCheapFlight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`
     )
     const hotelResult = await this.callService(
       'localhost',
@@ -185,12 +192,14 @@ export class AggregatorService {
 
         //the response comes in string.To get the total time,convert the response to 'date' type
         const flightArrival = new Date(flightResult.arriveTime);
+        
         //arriveTime is in Date data type so use getUTCHours and getUTCMinutes(21:00:00)
-        const flightMinutes = flightArrival.getUTCHours() * 60 + flightArrival.getUTCMinutes()
+        const flightMinutes = flightArrival.getUTCHours() * 60 + flightArrival.getUTCMinutes();
 
         //as the checkInEndTime is a string but not in full format dateTtime(21:04).only time.So new Date not work
         const [h, m] = hotel.checkInEndTime.split(':').map(Number);
         const hotelMinutes = h * 60 + m;
+        console.log("hotel minutes : ",hotelMinutes)
         return {
           ...hotel,
           lateCheckIn: flightMinutes <= hotelMinutes
@@ -210,14 +219,14 @@ export class AggregatorService {
   //get events that matches with the end destination
   //branch pattern used
 
-  async getEventInDestination(startDestination: string, endDestination: string, arriveTime: Date) {
-    if (!startDestination || !endDestination || !arriveTime) {
-      throw new HttpException('flight details are required', 400);
+  async getEventInDestination(startDestination: string, endDestination: string, departTime: string) {
+    if (!startDestination || !endDestination || !departTime) {
+      throw new HttpException('flight details are startDestinatin, endDestination and depart time are required', 400);
     }
     const flightResult: any = await this.callService(
       'localhost',
       3000,
-      `/flight?startDestination=${startDestination}&endDestination=${endDestination}&arriveTime=${arriveTime.toISOString()}`
+      `/flight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`
     )
     const hotelResult = await this.callService(
       'localhost',
