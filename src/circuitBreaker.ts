@@ -1,6 +1,10 @@
+import { Logger } from "@nestjs/common";
+
 export type BreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 export class CircuitBreaker<T> {
+private readonly logger= new Logger(CircuitBreaker.name)
+
     private  static state: BreakerState = 'CLOSED';
     private static failures = 0;
     private static success = 0;
@@ -23,44 +27,44 @@ export class CircuitBreaker<T> {
     }
 
     async fire(): Promise<T> {
+        this.logger.debug(`Circuit breaker invoked`)
         const now = Date.now();
-        console.log("---------------------------------------------------------")
-        console.log(`----breaker state ${CircuitBreaker.state}`)
-        console.log(`-------last failure time ${CircuitBreaker.lastFailureTime}`)
-        console.log(`-------failures ${CircuitBreaker.failures}`)
-        console.log(`-------success ${CircuitBreaker.success}`)
-        console.log("---------------------------------------------------------")
+
         if (CircuitBreaker.state == 'OPEN') {
             if (now - CircuitBreaker.lastFailureTime > this.options.cooldownTime) {
                 CircuitBreaker.state = 'HALF_OPEN';
                 CircuitBreaker.success = 0;
                 CircuitBreaker.failures= 0;
-                console.log("success requests limit reached");
-                console.log("request state OPEN == >HALF_OPEN")
+                this.logger.warn("circuit state changed OPEN == > HALF_OPEN")
             } else {
+                this.logger.warn(`Open state : returning fallback`)
                 return this._fallback();
             }
         }
         try {
             const result = await this._action();
             this.recordSuccess();
+            this.logger.log("weather fetching action succeded")
             return result;
 
         } catch (err) {
+            this.logger.warn(`weather fetching action failed`);
             this.recordFailure();
-            console.log("failure updated");
+        
             if (CircuitBreaker.state === 'HALF_OPEN' && CircuitBreaker.failures>=this.options.halfOpenRequests) {
                 CircuitBreaker.state = 'OPEN';
                 CircuitBreaker.lastFailureTime = now;
-                console.log("testing requests failed");
-                console.log("| request state HALF_OPEN ==> OPEN")
+                this.logger.error("circuite state changed HALF_OPEN ==> OPEN")
             }
             if (CircuitBreaker.state === 'CLOSED' && this.shouldOpen()) {
                 CircuitBreaker.state = 'OPEN';
                 CircuitBreaker.lastFailureTime = now;
-                console.log('Breaker opened');
-                console.log("| state CLOSED ==> OPEN");
+                this.logger.error("circuit state changed CLOSED ==> OPEN");
             }
+            this.logger.debug(`-----breaker state ----> ${CircuitBreaker.state}`)
+            this.logger.debug(`-----last failure time ----> ${CircuitBreaker.lastFailureTime}`);
+            this.logger.debug(`-----failure count ----> ${CircuitBreaker.failures}`);
+            this.logger.debug(`-----success count ----> ${CircuitBreaker.success}`);
             return this._fallback();
 
         }
@@ -71,8 +75,8 @@ export class CircuitBreaker<T> {
         CircuitBreaker.success++;
         if (CircuitBreaker.state === 'HALF_OPEN' && CircuitBreaker.success >= this.options.halfOpenRequests) {
             CircuitBreaker.state = 'CLOSED';
-            console.log('Breaker closed');
-            console.log("| state HALF_OPEN ==> CLOSED");
+        
+            this.logger.log("circuite state changed HALF_OPEN ==> CLOSED");
         }
     }
 
