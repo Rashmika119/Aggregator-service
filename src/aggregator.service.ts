@@ -1,4 +1,4 @@
-import { Injectable, HttpException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, HttpException, Logger, BadRequestException, BadGatewayException, InternalServerErrorException } from '@nestjs/common';
 
 import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom } from 'rxjs';
@@ -13,7 +13,7 @@ export class AggregatorService {
   constructor(private readonly httpService: HttpService) { }
   private readonly logger = new Logger(AggregatorService.name)
 
-  async fetchData(dateStr: any, endDestination: any) {
+  async fetchData(dateStr: any, endDestination: string) {
     this.logger.log(`Fetching weather for ${endDestination} on ${dateStr}`)
     return await this.callService('localhost', 5010, `/weather/seven-days/${dateStr}/${endDestination}`)
   }
@@ -29,9 +29,9 @@ export class AggregatorService {
     } catch (error) {
       this.logger.error(`Error calling ${url}`, error.stack);
       if (error instanceof AxiosError) {
-        throw new HttpException(`External service failed: ${error.message}`, 502);
+        throw new BadGatewayException(`External service with path ${path} failed: ${error.message}`);
       } else {
-        throw new HttpException('Internal server error', 500);
+        throw new InternalServerErrorException('Internal server error');
       }
     }
   }
@@ -162,7 +162,6 @@ export class AggregatorService {
     } catch (error) {
       degraded = true;
       this.logger.warn(`Timeout/degarded mode --> executing fallbacks`)
-
 
       flights = await Promise.resolve(flightPromise).catch(() => null);
       hotels = await Promise.resolve(hotelPromise).catch(() => null);
