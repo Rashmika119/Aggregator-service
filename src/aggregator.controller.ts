@@ -1,5 +1,7 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import { Controller, Get, InternalServerErrorException, Logger, Query } from '@nestjs/common';
 import { AggregatorService } from './aggregator.service';
+import { tripSearchDto } from './DTO/tripSearch.dto';
+
 
 
 
@@ -15,15 +17,14 @@ export class AggregatorController {
   //flight + hotel with scatter gather patter
 
   @Get('v1/trips/search')
-  async getHotelInfo(
-    @Query('startDestination') startDestination: string,
-    @Query('endDestination') endDestination: string,
-    @Query('departTime') departTime: string,
-  ) {
-    this.logger.log(
-      `GET /v1/trips/search called with startDestination=${startDestination}, endDestination=${endDestination}, departTime=${departTime}`,
-    );
-    return this.aggregatorService.getFlightAndHotelInfo(startDestination, endDestination, departTime);
+  async getHotelInfo(@Query() query: tripSearchDto) {
+    this.logger.log(`GET /v1/trips/search called with ${JSON.stringify(query)}`)
+    try {
+      return this.aggregatorService.getFlightAndHotelInfo(query.startDestination, query.endDestination, query.departTime);
+    } catch (error) {
+      this.logger.error('Error fetching flights and hotels', error.stack);
+      throw new InternalServerErrorException('Failed to fetch flights and hotels');
+    }
   }
 
 
@@ -31,15 +32,16 @@ export class AggregatorController {
   //weather + flight + hotel with scatter gather
 
   @Get('v2/trips/search')
-  async getHotelInfoWithWeather(
-    @Query('startDestination') startDestination: string,
-    @Query('endDestination') endDestination: string,
-    @Query('departTime') departTime: string,
-  ) {
+  async getHotelInfoWithWeather(@Query() query: tripSearchDto) {
     this.logger.log(
-      `GET /v2/trips/search called with startDestination=${startDestination}, endDestination=${endDestination}, departTime=${departTime}`,
+      this.logger.log(`GET /v2/trips/search called with ${JSON.stringify(query)}`),
     );
-    return this.aggregatorService.getInfoWithWeather(startDestination, endDestination, departTime);
+    try {
+      return this.aggregatorService.getInfoWithWeather(query.startDestination, query.endDestination, query.departTime);
+    } catch (error) {
+      this.logger.error('Error fetching flight, hotel and weather info', error.stack);
+      throw new InternalServerErrorException('Failed to fetch flight, hotel and weather info');
+    }
   }
 
 
@@ -49,15 +51,16 @@ export class AggregatorController {
   //chain pattern
 
   @Get('v1/trips/cheapest_route')
-  async getChepestRouteWithHotels(
-    @Query('startDestination') startDestination: string,
-    @Query('endDestination') endDestination: string,
-    @Query('departTime') departTime: string,
-  ) {
+  async getChepestRouteWithHotels(@Query() query: tripSearchDto) {
     this.logger.log(
-      `GET /v1/trips/cheapest_route called with startDestination=${startDestination}, endDestination=${endDestination}, departTime=${departTime}`,
+      `GET /v1/trips/cheapest_route called with ${JSON.stringify(query)}`,
     );
-    return this.aggregatorService.getBudgetRoute(startDestination, endDestination, departTime);
+    try {
+      return this.aggregatorService.getBudgetRoute(query.startDestination, query.endDestination, query.departTime);
+    } catch (error) {
+      this.logger.error('Error fetching cheapest route', error.stack);
+      throw new InternalServerErrorException('Failed to fetch cheapest route');
+    }
   }
 
   //---------------------------version 1--------------------------
@@ -66,19 +69,17 @@ export class AggregatorController {
   //branch aggregator pattern
 
   @Get('v1/trips/contextual')
-  async getEventsWithHotels(
-    @Query('startDestination') startDestination: string,
-    @Query('endDestination') endDestination: string,
-    //when send data through a url everything treated as astring.no matter the intended type
-    @Query('departTime') departTime: string
-
-  ) {
+  async getEventsWithHotels(@Query() query: tripSearchDto) {
     this.logger.log(
-      `GET /v1/trips/contextual called with startDestination=${startDestination}, endDestination=${endDestination}, departTime=${departTime}`,
+      `GET /v1/trips/contextual called with ${JSON.stringify(query)}`,
     );
+    try {
+      //getEventDest method expect Date object
+      return this.aggregatorService.getEventInDestination(query.startDestination, query.endDestination, query.departTime);
+    } catch (error) {
+      this.logger.error('Error fetching events and hotels', error.stack);
+      throw new InternalServerErrorException('Failed to fetch events and hotels');
+    }
 
-    //getEventDest method expect Date object
-    return this.aggregatorService.getEventInDestination(startDestination, endDestination, departTime);
-    ;
   }
 }
