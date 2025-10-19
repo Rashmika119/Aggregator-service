@@ -1,98 +1,142 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+Rollout Plan --API Version Migration (V1 -->V2)
+-----------------------------------------------
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+🌟 Stratergy: Canary Deployement
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+📌Deploy version 1 and version 2 side by side 
 
-## Description
+📌Gradual traffic shifting to v2
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+📌When v2 reaches 95% traffic, v1 will be removed
 
-## Project setup
+📌Shutdown date for v1: 2025-12-30
 
-```bash
-$ npm install
-```
+🌟 Version Overview
 
-## Compile and run the project
+ ✔ Version 1- flight service,Hotel service
 
-```bash
-# development
-$ npm run start
+      sample response:
+      {
+    "flights": [
+        {
+            "id": "26218126-4b01-49ba-b827-ce6366ff6abd",
+            "name": "Sri lanka Airlines",
+            "startDestination": "CMB",
+            "endDestination": "HMBT",
+            "locationType": "coastal",
+            "departTime": "2025-10-08T18:30:00.000Z",
+            "arriveTime": "2025-10-08T20:15:00.000Z",
+            "price": 15000
+        }
+    ],
+    "hotels": [
+        {
+            "id": "7cf42bc5-7d9d-4b52-a7f0-fd6c051feb77",
+            "name": "Shrangrilla",
+            "location": "HMBT",
+            "rating": 5,
+            "pricePerNight": 10000,
+            "checkInEndTime": "21:45"
+        }
+    ],
+    "degraded": false
+}
 
-# watch mode
-$ npm run start:dev
+ ✔ Version 2- fligh service, hotel service and weathere service
 
-# production mode
-$ npm run start:prod
-```
+      sample response:
 
-## Run tests
+      {
+     "flights":[...],
+     "hotels":[...],
+     "weather":
+      {
+        "id": "632aaffd-b966-425b-9283-b5eba4993c8f",
+        "date": "2025-10-14T00:00:00.000Z",
+        "location": "HMBT",
+        "tempMin": 30.8,
+        "tempMax": 24.9,
+        "condition": "Partly Cloudy"
+      }
+}
 
-```bash
-# unit tests
-$ npm run test
+🌟Rollout Phases
 
-# e2e tests
-$ npm run test:e2e
+💡 Phase 1 -Parallel Deployemnet 
 
-# test coverage
-$ npm run test:cov
-```
+📌Deploy version 1 and version 2 side by side
 
-## Deployment
+📌Expose V2 endpoints for new consumers
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+📌No impact on existing consumers.So zero distruption for v1 consumers
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+📌Documentation updated to show v2 availability
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+💡 Phase 2 - Traffic Monitoring and Canary start
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+📌Here test the v2 in production with real traffic.
 
-## Resources
+📌Beging routing a small trffic to v2 (5-10%)
 
-Check out a few resources that may come in handy when working with NestJS:
+📌Select a specific user group (ex:like premium users)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+📌Then can give X header for them (ex:X-API-Version: 2)
 
-## Support
+📌First we can redirect them to version 2 and give them the response in version 1 structure
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+📌when 60% of them reach them give default values for the consumers that use version1 📌although now to adapt them for version 2 response structure
 
-## Stay in touch
+📌Key Monitoring:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Error rate
+- Latency
+- Weather service failure
+- Response consistency
+  
+📌Rollback to v1 immediately to va if an instability occurs
 
-## License
+💡 Phase 3 - Gradually trffic shift
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+📌Traffic increases in steps
+
+Rollout Step	    % to v2	        % to v1
+Start	            5–10%	          90–95%
+Step 2	          25%	            75%
+Step 3	          50%	            50%
+Step 4	          75%	            25%
+
+📌Continue monitoring failures and performance
+
+💡 Phase 4 – Make v2 Default (95% Traffic)
+
+📌v2 handles almost all requests
+
+📌All new integrations use v2 only
+
+📌v1 remains for legacy consumers
+
+📌Deprecation warning period begins
+
+- Example deprecation header:
+
+Deprecation: true
+Sunset: 2025-12-30
+Use: /v2/trips/search
+
+💡 Phase 5 – Sunset & Retirement of v1
+
+📌Triggered when:
+
+- v2 reaches 95% adoption
+- Most consumers migrated
+  
+📌v1 shutdown date: 2025-12-30
+
+📌After shutdown, v1 endpoints may return:
+
+- 410 Gone OR
+- 404 Not Found
+  
+📌No protocol-level redirect or request transformation
+
+
