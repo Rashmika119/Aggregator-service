@@ -3,9 +3,9 @@ import { Logger } from "@nestjs/common";
 export type BreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 export class CircuitBreaker<T> {
-private readonly logger= new Logger(CircuitBreaker.name)
+    private readonly logger = new Logger(CircuitBreaker.name)
 
-    private  static state: BreakerState = 'CLOSED';
+    private static state: BreakerState = 'CLOSED';
     private static failures = 0;
     private static success = 0;
     private static lastFailureTime = 0;
@@ -22,7 +22,7 @@ private readonly logger= new Logger(CircuitBreaker.name)
             fallback: () => T
         },
     ) {
-        this._action = action; 
+        this._action = action;
         this._fallback = options.fallback;
     }
 
@@ -34,24 +34,32 @@ private readonly logger= new Logger(CircuitBreaker.name)
             if (now - CircuitBreaker.lastFailureTime > this.options.cooldownTime) {
                 CircuitBreaker.state = 'HALF_OPEN';
                 CircuitBreaker.success = 0;
-                CircuitBreaker.failures= 0;
+                CircuitBreaker.failures = 0;
                 this.logger.warn("circuit state changed OPEN == > HALF_OPEN")
             } else {
                 this.logger.warn(`Open state : returning fallback`)
                 return this._fallback();
             }
+            this.logger.debug(`-----breaker state ----> ${CircuitBreaker.state}`)
+            this.logger.debug(`-----last failure time ----> ${CircuitBreaker.lastFailureTime}`);
+            this.logger.debug(`-----failure count ----> ${CircuitBreaker.failures}`);
+            this.logger.debug(`-----success count ----> ${CircuitBreaker.success}`);
         }
         try {
             const result = await this._action();
             this.recordSuccess();
             this.logger.log("weather fetching action succeded")
+            this.logger.debug(`-----breaker state ----> ${CircuitBreaker.state}`)
+            this.logger.debug(`-----last failure time ----> ${CircuitBreaker.lastFailureTime}`);
+            this.logger.debug(`-----failure count ----> ${CircuitBreaker.failures}`);
+            this.logger.debug(`-----success count ----> ${CircuitBreaker.success}`);
             return result;
 
         } catch (err) {
             this.logger.warn(`weather fetching action failed`);
             this.recordFailure();
-        
-            if (CircuitBreaker.state === 'HALF_OPEN' && CircuitBreaker.failures>=this.options.halfOpenRequests) {
+
+            if (CircuitBreaker.state === 'HALF_OPEN' && CircuitBreaker.failures >= this.options.halfOpenRequests) {
                 CircuitBreaker.state = 'OPEN';
                 CircuitBreaker.lastFailureTime = now;
                 this.logger.error("circuite state changed HALF_OPEN ==> OPEN")
@@ -75,8 +83,12 @@ private readonly logger= new Logger(CircuitBreaker.name)
         CircuitBreaker.success++;
         if (CircuitBreaker.state === 'HALF_OPEN' && CircuitBreaker.success >= this.options.halfOpenRequests) {
             CircuitBreaker.state = 'CLOSED';
-        
+
             this.logger.log("circuite state changed HALF_OPEN ==> CLOSED");
+            this.logger.debug(`-----breaker state ----> ${CircuitBreaker.state}`)
+            this.logger.debug(`-----last failure time ----> ${CircuitBreaker.lastFailureTime}`);
+            this.logger.debug(`-----failure count ----> ${CircuitBreaker.failures}`);
+            this.logger.debug(`-----success count ----> ${CircuitBreaker.success}`);
         }
     }
 
@@ -89,7 +101,7 @@ private readonly logger= new Logger(CircuitBreaker.name)
         if (total < this.options.requestVolumeThreshold) {
             return false;
         }
-        const failureRate = CircuitBreaker.failures/ total;
+        const failureRate = CircuitBreaker.failures / total;
         return failureRate > this.options.failureThreshold;
     }
 }

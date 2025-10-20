@@ -1,4 +1,4 @@
-import { IsDateString, IsString } from "class-validator"
+import { IsDateString, IsOptional, IsString } from "class-validator"
 
 
 export class tripSearchDto{
@@ -8,6 +8,6 @@ export class tripSearchDto{
     @IsString()
     endDestination:string
 
-    @IsDateString()
-    departTime:string
+  @IsDateString()
+  departTime: string;
 }

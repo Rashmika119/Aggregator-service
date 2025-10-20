@@ -12,6 +12,7 @@ export class AggregatorController {
   constructor(private readonly aggregatorService: AggregatorService,
 
   ) { }
+  
 
   //-----------------------------version 1-------------------
   //flight + hotel with scatter gather patter
