@@ -15,7 +15,7 @@ export class AggregatorService {
 
   async fetchData(dateStr: any, endDestination: string) {
     this.logger.log(`Fetching weather for ${endDestination} on ${dateStr}`)
-    return await this.callService('localhost', 5010, `/weather/seven-days/${dateStr}/${endDestination}`)
+    return await this.callService('localhost', 5010,`/weather?date=${dateStr}&location=${endDestination}`)
   }
 
   private async callService(hostname: string, port: number, path: string): Promise<any> {
@@ -124,7 +124,17 @@ export class AggregatorService {
 
 
     //circuit breaker
-    const weatherBreaker = new CircuitBreaker(async () => await this.fetchData(dateStr, endDestination),
+    const weatherBreaker = new CircuitBreaker(async () =>{ const allweather:any[]= await this.fetchData(dateStr, endDestination);
+    const startDate=parseDate;
+    const endDate=new Date(parseDate);
+    endDate.setDate(endDate.getDate()+6);
+
+    if(!Array.isArray(allweather)) return[];
+
+    return allweather.filter(w=>{
+      const weatherDate=new Date(w.date);
+      return weatherDate>=startDate && weatherDate <=endDate;})},
+    
       {
         failureThreshold: 0.5,
         requestVolumeThreshold: 20,
@@ -132,10 +142,10 @@ export class AggregatorService {
         halfOpenRequests: 5,
         fallback: () => {
           this.logger.warn(`weather service fallback executed `);
-          return {
+          return [{
             summary: 'service unavailable',
             degraded: true
-          }
+          }]
         }
       }
     );
@@ -143,7 +153,7 @@ export class AggregatorService {
     const TOTATL_BUDGET = 1000;
     let flights = null;
     let hotels = null;
-    let weather = null;
+    let weather:any[]|null = null;
     let degraded = false;
 
     try {
@@ -168,7 +178,7 @@ export class AggregatorService {
 
       //we need this catch block,because if the circuit is open we want to show default values
       //if weather is failed or half opened,no need there catch block,bcz fallback take care of it
-      weather = (await weatherBreaker.fire().catch(() => ({ summary: 'service unavailable', degraded: true })))
+      weather = await weatherBreaker.fire().catch(() => [{ summary: 'service unavailable', degraded: true }])
 
 
     }
@@ -206,7 +216,7 @@ export class AggregatorService {
     const flightResult: any = await this.callService(
       'localhost',
       3000,
-      `/flight/getCheapFlight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`
+      `/flight?startDestination=${startDestination}&endDestination=${endDestination}&departTime=${departTime}`
     )
     const hotelResult = await this.callService(
       'localhost',
@@ -214,11 +224,26 @@ export class AggregatorService {
       `/hotel?location=${endDestination}`
     )
 
+    const cheapestFlight =
+      Array.isArray(flightResult) && flightResult.length > 0
+        ? flightResult.reduce((min, flight) =>
+          flight.price < min.price ? flight : min
+        )
+        : null;
+
+    if (!cheapestFlight) {
+      return {
+        flight: null,
+        hotel: [],
+        message: 'No flights available for the given criteria'
+      };
+    }
+
     const hotelsWithLateCheckins = Array.isArray(hotelResult) ?
       hotelResult.map((hotel) => {
 
         //the response comes in string.To get the total time,convert the response to 'date' type
-        const flightArrival = new Date(flightResult.arriveTime);
+        const flightArrival = new Date(cheapestFlight.arriveTime);
 
         //arriveTime is in Date data type so use getUTCHours and getUTCMinutes(21:00:00)
         const flightMinutes = flightArrival.getUTCHours() * 60 + flightArrival.getUTCMinutes();
@@ -235,7 +260,7 @@ export class AggregatorService {
 
       : []
     return {
-      flight: flightResult,
+      flight: cheapestFlight,
       hotel: hotelsWithLateCheckins,
     };
   }
@@ -276,7 +301,7 @@ export class AggregatorService {
       )
 
 
-    }else{
+    } else {
       this.logger.log(`Non-coastal destination → skipping event fetch`);
     }
 

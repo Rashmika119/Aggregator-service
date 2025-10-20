@@ -2,9 +2,9 @@ import { ValidationPipe, ValidationPipeOptions } from '@nestjs/common';
 
 export function createValidationPipe(): ValidationPipe {
   const opts: ValidationPipeOptions = {
-    whitelist: false,
+    whitelist: true,
     transform: true,
-    forbidNonWhitelisted: false,
+    forbidNonWhitelisted: true,
     transformOptions: { enableImplicitConversion: true },
   };
   return new ValidationPipe(opts);
