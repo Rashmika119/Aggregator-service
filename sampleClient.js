@@ -48,7 +48,7 @@ async function searchTrips(start, end, date) {
 
     try {
         const response = await axios.get(`${baseUrl}/search`, {
-            params: { startDestination: start, endDestination: end, arriveTime: date },
+            params: { startDestination: start, endDestination: end, departTime: date },
         });
 
         console.log(`API Version: v${apiVersion}`);
@@ -60,6 +60,7 @@ async function searchTrips(start, end, date) {
         } else if (apiVersion == 2) {
             stats.v2Success++;
         }
+        saveStats(stats)
     } catch (error) {
         console.error(`Error of calling v${apiVersion}: `, error.message);
 
@@ -68,6 +69,7 @@ async function searchTrips(start, end, date) {
         } else if (apiVersion == 2) {
             stats.v2Failures++;
         }
+        saveStats(stats)
     }
     const shouldMigrate = await isTimeToMigrate(stats.totalCount, stats.v2Success);
     if (shouldMigrate) {
@@ -89,4 +91,4 @@ async function isTimeToMigrate(totalCount, v2Success) {
     return v2successRate >= 95 && totalCount >= 20;
 }
 
-searchTrips("CMB", "HMBT", "2025-10-08T10:00:00");
+searchTrips("CMB", "HMBT", "2025-10-08");

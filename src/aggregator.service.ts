@@ -187,7 +187,6 @@ export class AggregatorService {
       degraded = true;
     }
 
-
     return {
       flights: flights || 'no flights found',
       hotels: hotels || 'no hotels found',
