@@ -15,7 +15,7 @@ export class AggregatorService {
 
   async fetchData(dateStr: any, endDestination: string) {
     this.logger.log(`Fetching weather for ${endDestination} on ${dateStr}`)
-    return await this.callService('localhost', 5010,`/weather?date=${dateStr}&location=${endDestination}`)
+    return await this.callService('localhost', 5010, `/weather?date=${dateStr}&location=${endDestination}`)
   }
 
   private async callService(hostname: string, port: number, path: string): Promise<any> {
@@ -27,7 +27,7 @@ export class AggregatorService {
       this.logger.debug(`Response recieved from ${url}`);
       return data
     } catch (error) {
-      this.logger.error(`Error calling ${url}`, error.stack);
+      this.logger.debug(`Error calling ${url}`, error.stack);
       if (error instanceof AxiosError) {
         throw new BadGatewayException(`External service with path ${path} failed: ${error.message}`);
       } else {
@@ -124,17 +124,35 @@ export class AggregatorService {
 
 
     //circuit breaker
-    const weatherBreaker = new CircuitBreaker(async () =>{ const allweather:any[]= await this.fetchData(dateStr, endDestination);
-    const startDate=parseDate;
-    const endDate=new Date(parseDate);
-    endDate.setDate(endDate.getDate()+6);
+    const weatherBreaker = new CircuitBreaker(async () => {
+      const startDate = new Date(parseDate);
+      const endDate = new Date(parseDate);
+      endDate.setDate(endDate.getDate() + 6);
 
-    if(!Array.isArray(allweather)) return[];
+      // Create an array of Promises for 7 days
+      const weatherPromises: Promise<any>[] = [];
 
-    return allweather.filter(w=>{
-      const weatherDate=new Date(w.date);
-      return weatherDate>=startDate && weatherDate <=endDate;})},
-    
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(parseDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        weatherPromises.push(this.fetchData(dateStr, endDestination));
+      }
+
+      // Fetch all 7 days concurrently
+      const allWeatherResults = await Promise.all(weatherPromises);
+
+      // Combine all results into one array
+      const allweather: any[] = allWeatherResults.flat();
+
+      if (!Array.isArray(allweather)) return [];
+
+      // Filter again (optional safety check)
+      return allweather.filter(w => {
+        const weatherDate = new Date(w.date);
+        return weatherDate >= startDate && weatherDate <= endDate;
+      });
+    },
       {
         failureThreshold: 0.5,
         requestVolumeThreshold: 20,
@@ -153,7 +171,7 @@ export class AggregatorService {
     const TOTATL_BUDGET = 1000;
     let flights = null;
     let hotels = null;
-    let weather:any[]|null = null;
+    let weather: any[] | null = null;
     let degraded = false;
 
     try {

@@ -93,7 +93,7 @@ Rollout Plan --API Version Migration (V1 -->V2)
 - Weather service failure
 - Response consistency
   
-📌Rollback to v1 immediately to va if an instability occurs
+📌Rollback to v1 immediately if an instability occurs in v2
 
 💡 Phase 3 - Gradually trffic shift
 

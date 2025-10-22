@@ -3,10 +3,10 @@ import { IsDateString, IsOptional, IsString } from "class-validator"
 
 export class tripSearchDto{
    @IsString()
-    startDestination:string
+   startDestination:string
 
-    @IsString()
-    endDestination:string
+   @IsString()
+   endDestination:string
 
   @IsDateString()
   departTime: string;
